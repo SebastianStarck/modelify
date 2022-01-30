@@ -1,0 +1,21 @@
+{
+  "name": "modelify",
+  "version": "1.0.0",
+  "description": "An easy to run API to update your existing database through REST API",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "author": "Sebastian Starck",
+  "license": "MIT",
+  "devDependencies": {
+    "prettier": "2.5.1"
+  },
+  "dependencies": {
+    "consola": "^2.15.3",
+    "dotenv": "^14.3.2",
+    "express": "^4.17.2",
+    "mysql2": "^2.3.3"
+  }
+}
