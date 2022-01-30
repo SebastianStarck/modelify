@@ -1,17 +1,20 @@
 import mysqlService from "./mysql-service.js";
 import logService from "./log-service.js";
+import Model from "./model.js";
+import pluralize from "pluralize";
 
 export default class DatabaseExplorer {
   tables = [];
-  models = [];
+  models = new Map();
 
   async explore() {
     logService.log("Scouting database...");
-    await this.getTables();
-    await this.getModels();
+    await this.loadTables();
+    await this.loadModels();
+    this.loadRelationshipsAndAttributes();
   }
 
-  async getTables() {
+  async loadTables() {
     const queryResponse = await mysqlService.runQuery(
       "SELECT table_name as 'table' FROM information_schema.tables where table_schema='modelify';"
     );
@@ -21,9 +24,43 @@ export default class DatabaseExplorer {
     logService.info(`Discovered ${this.tables.length} tables`);
   }
 
-  getModels() {
-    this.models = this.tables.filter((table) => !table.includes("_"));
+  async loadModels() {
+    const models = await Promise.all(
+      this.tables.filter((table) => !table.includes("_")).map(this.getModel)
+    );
 
-    logService.info(`Discovered ${this.models.length} models`);
+    models.forEach((model) => {
+      this.models.set(model.name, model);
+    });
+
+    logService.info(`Discovered ${this.models.size} models`);
+  }
+
+  async getModel(modelName) {
+    const tableMetadata = await mysqlService.runQuery(
+      `DESCRIBE \`${modelName}\``
+    );
+
+    return new Model(modelName, tableMetadata);
+  }
+
+  /*
+    Many-to-Many relationships comes from tables named: singularModel _ pluralModel
+    Model attributes comes from tables named: singularModel _ attribute
+   */
+  async loadRelationshipsAndAttributes() {
+    const nonModelTables = this.tables.filter((table) => table.includes("_"));
+
+    nonModelTables.forEach((tableName) => {
+      const [modelName, modelOrAttribute] = tableName.split("_");
+      const targetModel = this.models.get(modelName);
+      const otherIsModel = this.tables.includes(modelOrAttribute);
+
+      if (otherIsModel) {
+        targetModel.addRelationship(modelOrAttribute);
+      } else {
+        targetModel.addAttribute(modelOrAttribute, )
+      }
+    });
   }
 }
