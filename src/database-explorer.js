@@ -1,7 +1,6 @@
 import mysqlService from "./mysql-service.js";
 import logService from "./log-service.js";
 import Model from "./model.js";
-import pluralize from "pluralize";
 
 export default class DatabaseExplorer {
   tables = [];
@@ -50,7 +49,7 @@ export default class DatabaseExplorer {
     Many-to-Many relationships comes from tables named: singularModel _ pluralModel
     Model attributes comes from tables named: singularModel _ attribute
    */
-  async loadRelationshipsAndAttributes() {
+  loadRelationshipsAndAttributes() {
     const nonModelTables = this.tables.filter((table) => table.includes("_"));
 
     nonModelTables.forEach((tableName) => {

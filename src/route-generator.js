@@ -19,13 +19,37 @@ export default class RouteGenerator {
     this.app.get(`/${model.pluralName}`, async (req, res) => {
       const data = await model.getAll();
 
-      console.log(data);
       res.setHeader("Content-Type", "application/json");
-      res.end(JSON.stringify(data, null, 3));
+      res.end(JSON.stringify(data));
+    });
+
+    logService.log(`Generated GET "/${model.pluralName}/:id" route`);
+    this.app.get(`/${model.pluralName}/:id`, async (req, res) => {
+      const data = await model.get(req.params.id);
+
+      if (!data) {
+        return res.sendStatus(404);
+      }
+
+      res.setHeader("Content-Type", "application/json");
+      res.end(JSON.stringify(data));
     });
   }
 
-  generatePutRoutes(model) {}
+  generatePutRoutes(model) {
+    logService.log(`Generated PUT "/${model.pluralName}/:id" route`);
+    this.app.put(`/${model.pluralName}/:id`, async (req, res) => {
+      const target = await model.get(req.params.id);
+
+      if (!target) {
+        return res.sendStatus(404);
+      }
+
+      const result = await model.update(req.params.id, req.body);
+      res.setHeader("Content-Type", "application/json");
+      res.end(JSON.stringify(result));
+    });
+  }
 
   generatePostRoutes(model) {}
 
