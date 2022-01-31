@@ -92,6 +92,16 @@ export default class Model {
     return this.get(id);
   }
 
+  async delete(id) {
+    await mysqlService.runQuery(`
+      DELETE 
+      FROM ${this.pluralName} 
+      WHERE id = ${id}
+    `);
+
+    return {};
+  }
+
   async create(data = {}) {
     const fieldsToUpdate = this.getValidFields(data);
     const columns = Object.keys(fieldsToUpdate)

@@ -62,5 +62,19 @@ export default class RouteGenerator {
     });
   }
 
-  generateDeleteRoutes(model) {}
+  generateDeleteRoutes(model) {
+    logService.logRouteGen("DELETE", `/${model.pluralName}/:id`);
+    this.app.delete(`/${model.pluralName}/:id`, async (req, res) => {
+      const target = await model.get(req.params.id);
+
+      if (!target) {
+        return res.sendStatus(404);
+      }
+
+      const result = await model.delete(req.params.id);
+
+      res.setHeader("Content-Type", "application/json");
+      res.end(JSON.stringify(result));
+    });
+  }
 }
