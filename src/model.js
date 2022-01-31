@@ -22,9 +22,7 @@ export default class Model {
     this.updateableFields = _.without(
       fields.map((field) => field.Field),
       "id",
-      "created_at",
-      "updated_at",
-      "deleted_at"
+      "created_at"
     );
 
     this.requiredFields = fields
@@ -49,8 +47,6 @@ export default class Model {
   }
 
   async getAll() {
-    // TODO: Add look for relationships
-    // TODO: Ignore soft deletes
     const data = await mysqlService.runQuery(
       `SELECT * FROM ${this.pluralName}`
     );
@@ -59,8 +55,6 @@ export default class Model {
   }
 
   async get(id) {
-    // TODO: Add look for relationships
-    // TODO: Ignore soft deletes
     const data = await mysqlService.runQuery(
       `SELECT * FROM ${this.pluralName}
        WHERE id = ${id}`
@@ -70,8 +64,6 @@ export default class Model {
   }
 
   async getLast() {
-    // TODO: Add look for relationships
-    // TODO: Ignore soft deletes
     const data = await mysqlService.runQuery(
       `SELECT * FROM ${this.pluralName}
        ORDER BY id DESC
@@ -91,9 +83,7 @@ export default class Model {
 
     const result = await mysqlService.runQuery(`
       UPDATE ${this.pluralName}
-      SET 
-        ${this.parseFieldsToSQLUpdate(fieldsToUpdate)}, 
-        updated_at = NOW()
+      SET ${this.parseFieldsToSQLUpdate(fieldsToUpdate)} 
       WHERE id = ${id}
     `);
 
@@ -126,12 +116,12 @@ export default class Model {
 
     const columns = Object.keys(fieldsToUpdate)
       .map((column) => `\`${column}\``)
-      .concat("created_at", "updated_at")
+      .concat("created_at")
       .join(", ");
 
     const values = Object.values(fieldsToUpdate)
       .map((value) => `'${value}'`)
-      .concat("NOW()", "NOW()")
+      .concat("NOW()")
       .join(", ");
 
     await mysqlService.runQuery(`

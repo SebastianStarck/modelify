@@ -4,10 +4,9 @@ import RouteGenerator from "./src/route-generator.js";
 import logService from "./src/log-service.js";
 import mysqlService from "./src/mysql-service.js";
 
-async function run(dbOptions, app) {
+async function run(port, dbOptions, app) {
   const databaseExplorer = new DatabaseExplorer();
   const routeGenerator = new RouteGenerator(app);
-  const port = process.env.PORT;
 
   await mysqlService.setDbOptions(dbOptions);
 
