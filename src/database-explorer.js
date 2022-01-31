@@ -16,11 +16,9 @@ export default class DatabaseExplorer {
   }
 
   async loadTables() {
-    const queryResponse = await mysqlService.runQuery(
-      "SELECT table_name as 'table' FROM information_schema.tables where table_schema='modelify';"
-    );
+    const tables = await mysqlService.getTables();
 
-    this.tables = queryResponse.map((row) => row.table);
+    this.tables = tables.map((row) => row.table);
 
     logService.info(`Discovered ${this.tables.length} tables`);
   }

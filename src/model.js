@@ -32,8 +32,6 @@ export default class Model {
         (field) => field.Null === "NO" && field.Extra !== "auto_increment"
       )
       .map((field) => field.Field);
-
-    console.log(this.requiredFields);
   }
 
   addRelationship(relation) {

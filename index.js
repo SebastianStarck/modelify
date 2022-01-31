@@ -1,30 +1,33 @@
-import express from "express";
 import "dotenv/config";
-import bodyParser from "body-parser";
 import DatabaseExplorer from "./src/database-explorer.js";
 import RouteGenerator from "./src/route-generator.js";
 import logService from "./src/log-service.js";
+import mysqlService from "./src/mysql-service.js";
 
-const app = express();
-app.use(bodyParser.json());
-const databaseExplorer = new DatabaseExplorer();
-const routeGenerator = new RouteGenerator(app);
-const port = process.env.PORT;
+async function run(dbOptions, app) {
+  const databaseExplorer = new DatabaseExplorer();
+  const routeGenerator = new RouteGenerator(app);
+  const port = process.env.PORT;
 
-app.get("/kill", (req, res) => {
-  process.exit(0);
-});
+  await mysqlService.setDbOptions(dbOptions);
 
-app.listen(port, () => {});
-app.use(function (err, req, res, next) {
-  res.status(500).send(err.message);
-});
+  app.get("/kill", (req, res) => {
+    process.exit(0);
+  });
 
-databaseExplorer.explore().then((explorer) => {
-  const models = explorer.models;
+  app.listen(port, () => {});
+  app.use(function (err, req, res, next) {
+    res.status(500).send(err.message);
+  });
 
-  logService.log("> Creating routes...");
-  for (const [modelName, model] of models) {
-    routeGenerator.generate(model);
-  }
-});
+  databaseExplorer.explore().then((explorer) => {
+    const models = explorer.models;
+
+    logService.log("> Creating routes...");
+    for (const [modelName, model] of models) {
+      routeGenerator.generate(model);
+    }
+  });
+}
+
+export default { run };
