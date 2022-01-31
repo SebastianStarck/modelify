@@ -28,12 +28,12 @@ export default class Model {
 
   addRelationship(relation) {
     this.relations.push(relation);
-    logService.info(`Loaded relationship "${relation}" to ${this.name}`);
+    logService.logAttributeOrRelationSet("relationship", relation, this.name);
   }
 
   addAttribute(attributeName, values = []) {
     this.attributes.set(attributeName, values);
-    logService.info(`Loaded attribute "${attributeName}" to ${this.name}`);
+    logService.logAttributeOrRelationSet("attribute", attributeName, this.name);
   }
 
   getValidFields(data) {
@@ -96,14 +96,16 @@ export default class Model {
     const fieldsToUpdate = this.getValidFields(data);
     const columns = Object.keys(fieldsToUpdate)
       .map((column) => `\`${column}\``)
+      .concat("created_at", "updated_at")
       .join(", ");
     const values = Object.values(fieldsToUpdate)
       .map((value) => `'${value}'`)
+      .concat("NOW()", "NOW()")
       .join(", ");
 
-    const result = await mysqlService.runQuery(`
-      INSERT INTO ${this.pluralName} (${columns}, created_at, updated_at)
-      VALUES (${values}, NOW(), NOW())
+    await mysqlService.runQuery(`
+      INSERT INTO ${this.pluralName} (${columns})
+      VALUES (${values})
     `);
 
     return this.getLast();

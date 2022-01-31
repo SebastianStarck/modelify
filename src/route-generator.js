@@ -15,7 +15,7 @@ export default class RouteGenerator {
   }
 
   generateGetRoutes(model) {
-    logService.log(`Generated GET "/${model.pluralName}" route`);
+    logService.logRouteGen("GET", `/${model.pluralName}`);
     this.app.get(`/${model.pluralName}`, async (req, res) => {
       const data = await model.getAll();
 
@@ -23,7 +23,7 @@ export default class RouteGenerator {
       res.end(JSON.stringify(data));
     });
 
-    logService.log(`Generated GET "/${model.pluralName}/:id" route`);
+    logService.logRouteGen("GET", `/${model.pluralName}/:id`);
     this.app.get(`/${model.pluralName}/:id`, async (req, res) => {
       const data = await model.get(req.params.id);
 
@@ -37,7 +37,7 @@ export default class RouteGenerator {
   }
 
   generatePutRoutes(model) {
-    logService.log(`Generated PUT "/${model.pluralName}/:id" route`);
+    logService.logRouteGen("PUT", `/${model.pluralName}/:id`);
     this.app.put(`/${model.pluralName}/:id`, async (req, res) => {
       const target = await model.get(req.params.id);
 
@@ -53,7 +53,7 @@ export default class RouteGenerator {
   }
 
   generatePostRoutes(model) {
-    logService.log(`Generated POST "/${model.pluralName}/:id" route`);
+    logService.logRouteGen("POST", `/${model.pluralName}`);
     this.app.post(`/${model.pluralName}`, async (req, res) => {
       const result = await model.create(req.body);
 

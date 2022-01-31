@@ -26,15 +26,13 @@ export default class DatabaseExplorer {
   }
 
   async loadModels() {
-    const models = await Promise.all(
-      this.tables.filter((table) => !table.includes("_")).map(this.getModel)
-    );
+    const modelsToLoad = this.tables.filter((table) => !table.includes("_"));
+    logService.log(`> Loading models...`);
+    const models = await Promise.all(modelsToLoad.map(this.getModel));
 
     models.forEach((model) => {
       this.models.set(model.name, model);
     });
-
-    logService.info(`Discovered ${this.models.size} models`);
   }
 
   async getModel(modelName) {
@@ -42,6 +40,7 @@ export default class DatabaseExplorer {
       `DESCRIBE \`${modelName}\``
     );
 
+    logService.logModelLoaded(modelName);
     return new Model(modelName, tableMetadata);
   }
 
@@ -52,6 +51,7 @@ export default class DatabaseExplorer {
   loadRelationshipsAndAttributes() {
     const nonModelTables = this.tables.filter((table) => table.includes("_"));
 
+    logService.log(`> Loading attributes and relationships...`);
     nonModelTables.forEach((tableName) => {
       const [modelName, modelOrAttribute] = tableName.split("_");
       const targetModel = this.models.get(modelName);
