@@ -28,7 +28,12 @@ function success(str) {
   consola.success(str);
 }
 
+function error(str) {
+  consola.error(str);
+}
+
 export default {
+  error,
   log,
   info,
   success,

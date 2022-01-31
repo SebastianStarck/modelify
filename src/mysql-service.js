@@ -1,4 +1,5 @@
 import mysql from "mysql2/promise";
+import logService from "./log-service.js";
 import "dotenv/config";
 
 function getConnection() {
@@ -17,8 +18,8 @@ async function runQuery(query, params = null) {
     const [rows, fields] = await connection.execute(query, params);
     return rows;
   } catch (err) {
-    console.log(err);
-    process.exit(0);
+    logService.error(err.message);
+    throw err;
   }
 }
 

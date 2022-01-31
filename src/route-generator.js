@@ -25,56 +25,72 @@ export default class RouteGenerator {
 
     logService.logRouteGen("GET", `/${model.pluralName}/:id`);
     this.app.get(`/${model.pluralName}/:id`, async (req, res) => {
-      const data = await model.get(req.params.id);
+      try {
+        const data = await model.get(req.params.id);
 
-      if (!data) {
-        return res.sendStatus(404);
+        if (!data) {
+          return res.sendStatus(404);
+        }
+
+        res.setHeader("Content-Type", "application/json");
+        res.end(JSON.stringify(data));
+      } catch (err) {
+        res.status(500).send(err.message);
       }
-
-      res.setHeader("Content-Type", "application/json");
-      res.end(JSON.stringify(data));
     });
   }
 
   generatePutRoutes(model) {
     logService.logRouteGen("PUT", `/${model.pluralName}/:id`);
     this.app.put(`/${model.pluralName}/:id`, async (req, res) => {
-      const target = await model.get(req.params.id);
+      try {
+        const target = await model.get(req.params.id);
 
-      if (!target) {
-        return res.sendStatus(404);
+        if (!target) {
+          return res.sendStatus(404);
+        }
+
+        const result = await model.update(req.params.id, req.body);
+
+        res.setHeader("Content-Type", "application/json");
+        res.end(JSON.stringify(result));
+      } catch (err) {
+        res.status(500).send(err.message);
       }
-
-      const result = await model.update(req.params.id, req.body);
-
-      res.setHeader("Content-Type", "application/json");
-      res.end(JSON.stringify(result));
     });
   }
 
   generatePostRoutes(model) {
     logService.logRouteGen("POST", `/${model.pluralName}`);
     this.app.post(`/${model.pluralName}`, async (req, res) => {
-      const result = await model.create(req.body);
+      try {
+        const result = await model.create(req.body);
 
-      res.setHeader("Content-Type", "application/json");
-      res.end(JSON.stringify(result));
+        res.setHeader("Content-Type", "application/json");
+        res.end(JSON.stringify(result));
+      } catch (err) {
+        res.status(500).send(err.message);
+      }
     });
   }
 
   generateDeleteRoutes(model) {
     logService.logRouteGen("DELETE", `/${model.pluralName}/:id`);
     this.app.delete(`/${model.pluralName}/:id`, async (req, res) => {
-      const target = await model.get(req.params.id);
+      try {
+        const target = await model.get(req.params.id);
 
-      if (!target) {
-        return res.sendStatus(404);
+        if (!target) {
+          return res.sendStatus(404);
+        }
+
+        const result = await model.delete(req.params.id);
+
+        res.setHeader("Content-Type", "application/json");
+        res.end(JSON.stringify(result));
+      } catch (err) {
+        res.status(500).send(err.message);
       }
-
-      const result = await model.delete(req.params.id);
-
-      res.setHeader("Content-Type", "application/json");
-      res.end(JSON.stringify(result));
     });
   }
 }

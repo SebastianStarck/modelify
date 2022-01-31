@@ -15,8 +15,9 @@ app.get("/kill", (req, res) => {
   process.exit(0);
 });
 
-app.listen(port, () => {
-  // console.log(`Example app listening on port ${port}`);
+app.listen(port, () => {});
+app.use(function (err, req, res, next) {
+  res.status(500).send(err.message);
 });
 
 databaseExplorer.explore().then((explorer) => {
