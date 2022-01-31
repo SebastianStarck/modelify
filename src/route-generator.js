@@ -46,12 +46,21 @@ export default class RouteGenerator {
       }
 
       const result = await model.update(req.params.id, req.body);
+
       res.setHeader("Content-Type", "application/json");
       res.end(JSON.stringify(result));
     });
   }
 
-  generatePostRoutes(model) {}
+  generatePostRoutes(model) {
+    logService.log(`Generated POST "/${model.pluralName}/:id" route`);
+    this.app.post(`/${model.pluralName}`, async (req, res) => {
+      const result = await model.create(req.body);
+
+      res.setHeader("Content-Type", "application/json");
+      res.end(JSON.stringify(result));
+    });
+  }
 
   generateDeleteRoutes(model) {}
 }

@@ -8,6 +8,7 @@ export default class Model {
   pluralName;
 
   fields = [];
+  updateableFields = [];
   relations = [];
   attributes = new Map();
 
@@ -15,6 +16,14 @@ export default class Model {
     this.name = pluralize.singular(name);
     this.pluralName = name;
     this.fields = fields;
+
+    this.updateableFields = _.without(
+      fields.map((field) => field.Field),
+      "id",
+      "created_at",
+      "updated_at",
+      "deleted_at"
+    );
   }
 
   addRelationship(relation) {
@@ -28,9 +37,7 @@ export default class Model {
   }
 
   getValidFields(data) {
-    const fields = this.fields.map((field) => field.Field);
-
-    return _.pick(data, fields);
+    return _.pick(data, this.updateableFields);
   }
 
   async getAll() {
@@ -54,17 +61,52 @@ export default class Model {
     return data[0];
   }
 
+  async getLast() {
+    // TODO: Add look for relationships
+    // TODO: Ignore soft deletes
+    const data = await mysqlService.runQuery(
+      `SELECT * FROM ${this.pluralName}
+       ORDER BY id DESC
+       LIMIT 1`
+    );
+
+    return data[0];
+  }
+
   async update(id, data = {}) {
     delete data.id;
     const fieldsToUpdate = this.getValidFields(data);
 
+    if (Object.keys(fieldsToUpdate).length === 0) {
+      return this.get(id);
+    }
+
     const result = await mysqlService.runQuery(`
       UPDATE ${this.pluralName}
-      SET ${this.parseFieldsToSQLUpdate(fieldsToUpdate)}
+      SET 
+        ${this.parseFieldsToSQLUpdate(fieldsToUpdate)}, 
+        updated_at = NOW()
       WHERE id = ${id}
     `);
 
     return this.get(id);
+  }
+
+  async create(data = {}) {
+    const fieldsToUpdate = this.getValidFields(data);
+    const columns = Object.keys(fieldsToUpdate)
+      .map((column) => `\`${column}\``)
+      .join(", ");
+    const values = Object.values(fieldsToUpdate)
+      .map((value) => `'${value}'`)
+      .join(", ");
+
+    const result = await mysqlService.runQuery(`
+      INSERT INTO ${this.pluralName} (${columns}, created_at, updated_at)
+      VALUES (${values}, NOW(), NOW())
+    `);
+
+    return this.getLast();
   }
 
   parseFieldsToSQLUpdate(fields) {
