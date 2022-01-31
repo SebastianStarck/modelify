@@ -12,6 +12,8 @@ export default class DatabaseExplorer {
     await this.loadTables();
     await this.loadModels();
     this.loadRelationshipsAndAttributes();
+
+    return this;
   }
 
   async loadTables() {
@@ -59,7 +61,7 @@ export default class DatabaseExplorer {
       if (otherIsModel) {
         targetModel.addRelationship(modelOrAttribute);
       } else {
-        targetModel.addAttribute(modelOrAttribute, )
+        targetModel.addAttribute(modelOrAttribute);
       }
     });
   }
