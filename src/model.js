@@ -9,6 +9,8 @@ export default class Model {
 
   fields = [];
   updateableFields = [];
+  requiredFields = [];
+
   relations = [];
   attributes = new Map();
 
@@ -24,6 +26,14 @@ export default class Model {
       "updated_at",
       "deleted_at"
     );
+
+    this.requiredFields = fields
+      .filter(
+        (field) => field.Null === "NO" && field.Extra !== "auto_increment"
+      )
+      .map((field) => field.Field);
+
+    console.log(this.requiredFields);
   }
 
   addRelationship(relation) {
@@ -99,15 +109,28 @@ export default class Model {
       WHERE id = ${id}
     `);
 
-    return {};
+    return {
+      success: true,
+    };
   }
 
   async create(data = {}) {
     const fieldsToUpdate = this.getValidFields(data);
+    const missingRequiredFields = this.requiredFields.filter(
+      (field) => !Object.keys(fieldsToUpdate).includes(field)
+    );
+
+    if (missingRequiredFields.length > 0) {
+      throw new Error(
+        `Required fields missing: ${missingRequiredFields.join(", ")}`
+      );
+    }
+
     const columns = Object.keys(fieldsToUpdate)
       .map((column) => `\`${column}\``)
       .concat("created_at", "updated_at")
       .join(", ");
+
     const values = Object.values(fieldsToUpdate)
       .map((value) => `'${value}'`)
       .concat("NOW()", "NOW()")
