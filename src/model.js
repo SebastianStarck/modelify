@@ -1,7 +1,7 @@
 import pluralize from "pluralize";
 import logService from "./log-service.js";
 import mysqlService from "./mysql-service.js";
-import InvalidModelInputError from "./InvalidModelInputError.js";
+import InvalidModelInputError from "./invalid-model-input-error.js";
 import _ from "lodash";
 
 export default class Model {
@@ -50,13 +50,16 @@ export default class Model {
   }
 
   getFieldsForDocumentation() {
-    return this.fields.map(({ Type }) => {
+    return this.fields.reduce((result, { Field, Type }) => {
       const isNumber = Type.includes("int");
       return {
-        type: isNumber ? "integer" : "string",
-        format: isNumber ? "int32" : null,
+        ...result,
+        [Field]: {
+          type: isNumber ? "integer" : "string",
+          format: isNumber ? "int32" : null,
+        },
       };
-    });
+    }, {});
   }
 
   async getAll() {
