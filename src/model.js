@@ -1,10 +1,12 @@
 import pluralize from "pluralize";
 import logService from "./log-service.js";
 import mysqlService from "./mysql-service.js";
+import InvalidModelInputError from "./InvalidModelInputError.js";
 import _ from "lodash";
 
 export default class Model {
   name;
+  capitalizedName;
   pluralName;
 
   fields = [];
@@ -16,6 +18,7 @@ export default class Model {
 
   constructor(name, fields) {
     this.name = pluralize.singular(name);
+    this.capitalizedName = _.capitalize(this.name);
     this.pluralName = name;
     this.fields = fields;
 
@@ -44,6 +47,16 @@ export default class Model {
 
   getValidFields(data) {
     return _.pick(data, this.updateableFields);
+  }
+
+  getFieldsForDocumentation() {
+    return this.fields.map(({ Type }) => {
+      const isNumber = Type.includes("int");
+      return {
+        type: isNumber ? "integer" : "string",
+        format: isNumber ? "int32" : null,
+      };
+    });
   }
 
   async getAll() {
@@ -81,7 +94,7 @@ export default class Model {
       return this.get(id);
     }
 
-    const result = await mysqlService.runQuery(`
+    await mysqlService.runQuery(`
       UPDATE ${this.pluralName}
       SET ${this.parseFieldsToSQLUpdate(fieldsToUpdate)} 
       WHERE id = ${id}
@@ -109,9 +122,7 @@ export default class Model {
     );
 
     if (missingRequiredFields.length > 0) {
-      throw new Error(
-        `Required fields missing: ${missingRequiredFields.join(", ")}`
-      );
+      throw new InvalidModelInputError(missingRequiredFields);
     }
 
     const columns = Object.keys(fieldsToUpdate)

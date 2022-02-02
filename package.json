@@ -15,8 +15,11 @@
   "dependencies": {
     "consola": "^2.15.3",
     "dotenv": "^14.3.2",
+    "express": "^4.17.2",
     "lodash": "^4.17.21",
     "mysql2": "^2.3.3",
-    "pluralize": "^8.0.0"
+    "npm": "^8.4.0",
+    "pluralize": "^8.0.0",
+    "swagger-ui-express": "^4.3.0"
   }
 }

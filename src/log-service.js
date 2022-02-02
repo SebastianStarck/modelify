@@ -32,6 +32,10 @@ function error(str) {
   consola.error(str);
 }
 
+function warning(str) {
+  consola.warn(str);
+}
+
 export default {
   error,
   log,
@@ -40,4 +44,5 @@ export default {
   logRouteGen,
   logAttributeOrRelationSet,
   logModelLoaded,
+  warning,
 };

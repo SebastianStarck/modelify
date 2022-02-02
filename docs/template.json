@@ -1,0 +1,24 @@
+{
+  "openapi": "3.0.1",
+  "info": {
+    "title": "Modelify",
+    "description": "Welcome to the modelify auto generated docs! Here you can explore all the generated models from your database.",
+    "contact": {
+      "email": "sebastian@starck.im"
+    },
+    "version": "1.0.0"
+  },
+  "externalDocs": {
+    "description": "Find out more about me",
+    "url": "https://www.linkedin.com/in/sebasti%C3%A1n-starck-22676b172/"
+  },
+  "servers": [
+    {
+      "url": "//localhost/3100/"
+    }
+  ],
+  "paths": {},
+  "components": {
+    "schemas": {}
+  }
+}
