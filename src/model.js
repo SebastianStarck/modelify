@@ -2,6 +2,7 @@ import pluralize from "pluralize";
 import logService from "./log-service.js";
 import mysqlService from "./mysql-service.js";
 import InvalidModelInputError from "./invalid-model-input-error.js";
+import Relationship from "./relationship.js";
 import _ from "lodash";
 
 export default class Model {
@@ -13,7 +14,7 @@ export default class Model {
   updateableFields = [];
   requiredFields = [];
 
-  relations = [];
+  relations = new Map();
   attributes = new Map();
 
   constructor(name, fields) {
@@ -35,12 +36,14 @@ export default class Model {
       .map((field) => field.Field);
   }
 
-  addRelationship(relation) {
-    this.relations.push(relation);
-    logService.logAttributeOrRelationSet("relationship", relation, this.name);
+  async addRelationship(name) {
+    const tableData = await mysqlService.runQuery(`DESCRIBE ${name}`);
+    this.relations.set(name, new Relationship(name, tableData));
+    logService.logAttributeOrRelationSet("relationship", name);
   }
 
   addAttribute(attributeName, values = []) {
+    console.log("set attribute", attributeName);
     this.attributes.set(attributeName, values);
     logService.logAttributeOrRelationSet("attribute", attributeName, this.name);
   }
@@ -62,21 +65,38 @@ export default class Model {
     }, {});
   }
 
-  async getAll() {
-    const data = await mysqlService.runQuery(
-      `SELECT * FROM ${this.pluralName}`
-    );
+  async get(id = null) {
+    let query = `SELECT`;
 
-    return data;
-  }
+    this.fields.forEach(({ Field }, index) => {
+      if (index !== 0) {
+        query += ",";
+      }
 
-  async get(id) {
-    const data = await mysqlService.runQuery(
-      `SELECT * FROM ${this.pluralName}
-       WHERE id = ${id}`
-    );
+      query += `\n M.${Field}`;
+    });
 
-    return data[0];
+    this.relations.forEach((relationModel, relation) => {
+      relationModel.fields.forEach(({ Field }) => {
+        query += `,\n GROUP_CONCAT(\`${relation}\`.${Field}) as '${relation}.${Field}'`;
+      });
+    });
+
+    query += `\n FROM ${this.pluralName} M`;
+    this.relations.forEach((relationModel, relation) => {
+      query += `\n JOIN \`${relation}\` ON M.id = \`${relation}\`.id_${this.name}`;
+      //query += `\n JOIN \`${relation}\` ON \`${relation}\`.id_${relationModel.name} = ${relation}.id`;
+    });
+
+    if (id) {
+      query += `\n WHERE M.id = ${id}`;
+    }
+
+    query += "\n GROUP BY M.id";
+    const data = await mysqlService.runQuery(query);
+    const result = data.map(this.flattenModel);
+
+    return id ? result[0] : result;
   }
 
   async getLast() {
@@ -158,5 +178,60 @@ export default class Model {
 
       return result;
     }, "");
+  }
+
+  getRelationTargetField(relationName, field) {
+    const relation = this.relations.get(relationName);
+
+    if (!relation) {
+      throw new Error(`Relation "${relationName}" not found`);
+    }
+
+    // This assumes all relationships are an enum reference with an ID column followed of the desired column
+    return relation.fields.slice(1, 2).Field;
+  }
+
+  // Separate the model data from its relations' data
+  flattenModel = (model) => {
+    const flattenModel = Object.entries(model).reduce(
+      (result, [key, value]) => {
+        const [relation, relationKey] = key.split(".");
+
+        if (!relationKey) {
+          result[key] = value;
+        } else {
+          result[relation] = { ...result[relation], [relationKey]: value };
+        }
+
+        return result;
+      },
+      {}
+    );
+
+    this.relations.forEach((relation) => {
+      flattenModel[relation.pluralName] = this.parseRelationCollection(
+        flattenModel[relation.pluralName]
+      );
+    });
+
+    return flattenModel;
+  };
+
+  /*
+    From "user_attributes": { "id": "1,2,3" ...},
+    To   "user_attributes": [{ "id": "1"...}, { "id": "2" }...]
+   */
+  parseRelationCollection(relationship) {
+    console.log(relationship);
+    return Object.entries(relationship).reduce((result, [key, value]) => {
+      (value || "").split(",").forEach((relationValueEntry, index) => {
+        result[index] = {
+          ...result[index],
+          [key]: relationValueEntry || null,
+        };
+      });
+
+      return result;
+    }, []);
   }
 }

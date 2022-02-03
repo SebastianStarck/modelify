@@ -41,6 +41,7 @@ async function setDbOptions(options) {
 
   logService.log("Testing database connection...");
   await getTables();
+  logService.success("Connected to the database successfully");
 }
 
 async function getTables() {
@@ -56,4 +57,5 @@ async function getTables() {
     process.exit(0);
   }
 }
+
 export default { runQuery, setDbOptions, getTables };

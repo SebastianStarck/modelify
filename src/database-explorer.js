@@ -1,6 +1,7 @@
 import mysqlService from "./mysql-service.js";
 import logService from "./log-service.js";
 import Model from "./model.js";
+import pluralize from "pluralize";
 
 export default class DatabaseExplorer {
   tables = [];
@@ -10,7 +11,7 @@ export default class DatabaseExplorer {
     logService.log("Scouting database...");
     await this.loadTables();
     await this.loadModels();
-    this.loadRelationshipsAndAttributes();
+    await this.loadRelationshipsAndAttributes();
 
     return this;
   }
@@ -42,24 +43,20 @@ export default class DatabaseExplorer {
     return new Model(modelName, tableMetadata);
   }
 
-  /*
-    Many-to-Many relationships comes from tables named: singularModel _ pluralModel
-    Model attributes comes from tables named: singularModel _ attribute
-   */
-  loadRelationshipsAndAttributes() {
+  async loadRelationshipsAndAttributes() {
     const nonModelTables = this.tables.filter((table) => table.includes("_"));
 
     logService.log(`> Loading attributes and relationships...`);
-    nonModelTables.forEach((tableName) => {
-      const [modelName, modelOrAttribute] = tableName.split("_");
-      const targetModel = this.models.get(modelName);
-      const otherIsModel = this.tables.includes(modelOrAttribute);
+    await Promise.all(
+      nonModelTables.map(async (tableName) => {
+        const [modelName, modelOrAttribute] = tableName.split("_");
+        const targetModel = this.models.get(modelName);
+        const otherIsModel = this.tables.includes(modelOrAttribute);
 
-      if (otherIsModel) {
-        targetModel.addRelationship(modelOrAttribute);
-      } else {
-        targetModel.addAttribute(modelOrAttribute);
-      }
-    });
+        return otherIsModel
+          ? targetModel.addRelationship(tableName)
+          : targetModel.addAttribute(modelOrAttribute);
+      })
+    );
   }
 }

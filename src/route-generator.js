@@ -17,7 +17,7 @@ export default class RouteGenerator {
   generateGetRoutes(model) {
     logService.logRouteGen("GET", `/${model.pluralName}`);
     this.app.get(`/${model.pluralName}`, async (req, res) => {
-      const data = await model.getAll();
+      const data = await model.get();
 
       res.setHeader("Content-Type", "application/json");
       res.end(JSON.stringify(data));
