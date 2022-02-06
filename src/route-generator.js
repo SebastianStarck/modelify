@@ -1,4 +1,5 @@
 import logService from "./log-service.js";
+import _ from "lodash";
 
 export default class RouteGenerator {
   app;
@@ -8,6 +9,7 @@ export default class RouteGenerator {
   }
 
   generate(model) {
+    logService.log(`\n${_.capitalize(model.name)} endpoints:`);
     this.generateGetRoutes(model);
     this.generatePutRoutes(model);
     this.generatePostRoutes(model);
@@ -29,7 +31,7 @@ export default class RouteGenerator {
         const data = await model.get(req.params.id);
 
         if (!data) {
-          return res.sendStatus(404);
+          return res.status(404).send({ success: false, status: "Not found" });
         }
 
         res.setHeader("Content-Type", "application/json");

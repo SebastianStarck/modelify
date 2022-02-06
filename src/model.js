@@ -3,6 +3,7 @@ import logService from "./log-service.js";
 import mysqlService from "./mysql-service.js";
 import InvalidModelInputError from "./invalid-model-input-error.js";
 import Relationship from "./relationship.js";
+import QueryBuilder from "./query-builder.js";
 import _ from "lodash";
 
 export default class Model {
@@ -36,14 +37,20 @@ export default class Model {
       .map((field) => field.Field);
   }
 
-  async addRelationship(name) {
+  async addRelationship(name, seniorModel, childrenModel) {
     const tableData = await mysqlService.runQuery(`DESCRIBE ${name}`);
-    this.relations.set(name, new Relationship(name, tableData));
-    logService.logAttributeOrRelationSet("relationship", name);
+    const relationship = new Relationship(
+      name,
+      tableData,
+      seniorModel,
+      childrenModel
+    );
+
+    this.relations.set(name, relationship);
+    logService.logAttributeOrRelationSet("relationship", name, this.name);
   }
 
   addAttribute(attributeName, values = []) {
-    console.log("set attribute", attributeName);
     this.attributes.set(attributeName, values);
     logService.logAttributeOrRelationSet("attribute", attributeName, this.name);
   }
@@ -52,6 +59,7 @@ export default class Model {
     return _.pick(data, this.updateableFields);
   }
 
+  // TODO: Improve field type casting from sql to swagger-like type
   getFieldsForDocumentation() {
     return this.fields.reduce((result, { Field, Type }) => {
       const isNumber = Type.includes("int");
@@ -66,35 +74,9 @@ export default class Model {
   }
 
   async get(id = null) {
-    let query = `SELECT`;
-
-    this.fields.forEach(({ Field }, index) => {
-      if (index !== 0) {
-        query += ",";
-      }
-
-      query += `\n M.${Field}`;
-    });
-
-    this.relations.forEach((relationModel, relation) => {
-      relationModel.fields.forEach(({ Field }) => {
-        query += `,\n GROUP_CONCAT(\`${relation}\`.${Field}) as '${relation}.${Field}'`;
-      });
-    });
-
-    query += `\n FROM ${this.pluralName} M`;
-    this.relations.forEach((relationModel, relation) => {
-      query += `\n JOIN \`${relation}\` ON M.id = \`${relation}\`.id_${this.name}`;
-      //query += `\n JOIN \`${relation}\` ON \`${relation}\`.id_${relationModel.name} = ${relation}.id`;
-    });
-
-    if (id) {
-      query += `\n WHERE M.id = ${id}`;
-    }
-
-    query += "\n GROUP BY M.id";
+    const query = new QueryBuilder(this).get(id);
     const data = await mysqlService.runQuery(query);
-    const result = data.map(this.flattenModel);
+    const result = data.map(this.rawSQLToModel);
 
     return id ? result[0] : result;
   }
@@ -180,41 +162,18 @@ export default class Model {
     }, "");
   }
 
-  getRelationTargetField(relationName, field) {
-    const relation = this.relations.get(relationName);
-
-    if (!relation) {
-      throw new Error(`Relation "${relationName}" not found`);
-    }
-
-    // This assumes all relationships are an enum reference with an ID column followed of the desired column
-    return relation.fields.slice(1, 2).Field;
-  }
-
-  // Separate the model data from its relations' data
-  flattenModel = (model) => {
-    const flattenModel = Object.entries(model).reduce(
-      (result, [key, value]) => {
-        const [relation, relationKey] = key.split(".");
-
-        if (!relationKey) {
-          result[key] = value;
-        } else {
-          result[relation] = { ...result[relation], [relationKey]: value };
-        }
-
-        return result;
-      },
-      {}
-    );
+  rawSQLToModel = (rawOutput) => {
+    const model = Object.entries(rawOutput).reduce((result, [key, value]) => {
+      return _.set(result, key, value);
+    }, {});
 
     this.relations.forEach((relation) => {
-      flattenModel[relation.pluralName] = this.parseRelationCollection(
-        flattenModel[relation.pluralName]
+      model[relation.pluralName] = this.parseRelationCollection(
+        model[relation.pluralName]
       );
     });
 
-    return flattenModel;
+    return model;
   };
 
   /*
@@ -222,13 +181,18 @@ export default class Model {
     To   "user_attributes": [{ "id": "1"...}, { "id": "2" }...]
    */
   parseRelationCollection(relationship) {
-    console.log(relationship);
     return Object.entries(relationship).reduce((result, [key, value]) => {
-      (value || "").split(",").forEach((relationValueEntry, index) => {
-        result[index] = {
-          ...result[index],
-          [key]: relationValueEntry || null,
-        };
+      const parsedValue =
+        value && typeof value === "object"
+          ? this.parseRelationCollection(value)
+          : (value || "").split(",");
+
+      parsedValue.forEach((relationValueEntry, index) => {
+        result[index] = _.set(
+          result[index] || {},
+          key,
+          relationValueEntry || null
+        );
       });
 
       return result;

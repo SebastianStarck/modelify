@@ -1,22 +1,27 @@
 import consola from "consola";
+import consts from "./consts.js";
 
+// TODO: Implement logging to file maybe?
 function log(str) {
   consola.log(str);
 }
 
 function logRouteGen(method, route) {
   consola.success(
-    ` ${method.padStart(7, " ")} ${route.padEnd(20, " ")} created`
+    ` ${method.padStart(consts.CONSOLE_ROUTE_METHOD_SPACE, " ")} ${route.padEnd(
+      consts.CONSOLE_ROUTE_NAME_SPACE,
+      " "
+    )} created`
   );
 }
 
 function logModelLoaded(model) {
-  consola.success(`  Loaded model ${model}`);
+  consola.success(`${consts.CONSOLE_SUBSTATEMENT_SPACE}Loaded model ${model}`);
 }
 
 function logAttributeOrRelationSet(eventType, targetName, modelName) {
   consola.success(
-    `  Loaded ${eventType.padEnd(13, " ")} ${modelName}.${targetName}`
+    `${consts.CONSOLE_SUBSTATEMENT_SPACE}Loaded ${eventType} ${modelName}.${targetName}`
   );
 }
 

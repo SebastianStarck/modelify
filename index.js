@@ -23,11 +23,13 @@ async function run(port, dbOptions, app) {
 
   await databaseExplorer.explore();
 
+  logService.log("\n> Generating REST API endpoints...");
   for (const [modelName, model] of databaseExplorer.models) {
     routeGenerator.generate(model);
   }
+  logService.success("Generated REST API endpoints successfully");
 
-  logService.info("Generating REST API documentation...");
+  logService.log("\n> Generating REST API documentation...");
   app.use(
     "/api-docs",
     swaggerUi.serve,

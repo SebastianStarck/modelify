@@ -7,16 +7,26 @@ let dbConfig = {
   database: process.env.DB_NAME,
   user: process.env.DB_USER,
   password: process.env.DB_PASSWORD,
+  logQueries: true,
 };
 
 function getConnection() {
-  return mysql.createConnection(dbConfig);
+  return mysql.createConnection({
+    host: dbConfig.host,
+    database: dbConfig.database,
+    user: dbConfig.user,
+    password: dbConfig.password,
+  });
 }
 
-async function runQuery(query, params = null) {
+async function runQuery(query, params = null, logQuery = dbConfig.logQueries) {
   const connection = await getConnection();
 
   try {
+    if (logQuery) {
+      logService.info(`Running query \n ${query}`);
+    }
+
     const [rows, fields] = await connection.execute(query, params);
     return rows;
   } catch (err) {
@@ -39,7 +49,7 @@ async function setDbOptions(options) {
 
   dbConfig = options;
 
-  logService.log("Testing database connection...");
+  logService.log("> Testing database connection...");
   await getTables();
   logService.success("Connected to the database successfully");
 }
@@ -58,4 +68,25 @@ async function getTables() {
   }
 }
 
-export default { runQuery, setDbOptions, getTables };
+function columnIsRequired({ Extra, Null }) {
+  return Null === "NO" && Extra !== "auto_increment";
+}
+
+function getColumnName({ Field }) {
+  return Field;
+}
+
+function fieldToGroupConcantSelect({ Field }, table, as) {
+  return `GROUP_CONCAT(DISTINCT\`${table}\`.${Field}) as '${
+    as || `${table}.${Field}`
+  }'`;
+}
+
+export default {
+  runQuery,
+  setDbOptions,
+  getTables,
+  columnIsRequired,
+  getColumnName,
+  fieldToGroupConcantSelect,
+};

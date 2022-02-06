@@ -8,7 +8,7 @@ export default class DatabaseExplorer {
   models = new Map();
 
   async explore() {
-    logService.log("Scouting database...");
+    logService.log("\n> Scouting database...");
     await this.loadTables();
     await this.loadModels();
     await this.loadRelationshipsAndAttributes();
@@ -26,7 +26,7 @@ export default class DatabaseExplorer {
 
   async loadModels() {
     const modelsToLoad = this.tables.filter((table) => !table.includes("_"));
-    logService.log(`> Loading models...`);
+    logService.log(`\n> Loading models...`);
     const models = await Promise.all(modelsToLoad.map(this.getModel));
 
     models.forEach((model) => {
@@ -46,16 +46,22 @@ export default class DatabaseExplorer {
   async loadRelationshipsAndAttributes() {
     const nonModelTables = this.tables.filter((table) => table.includes("_"));
 
-    logService.log(`> Loading attributes and relationships...`);
+    logService.log(`\n> Loading attributes and relationships...`);
     await Promise.all(
       nonModelTables.map(async (tableName) => {
         const [modelName, modelOrAttribute] = tableName.split("_");
         const targetModel = this.models.get(modelName);
         const otherIsModel = this.tables.includes(modelOrAttribute);
 
-        return otherIsModel
-          ? targetModel.addRelationship(tableName)
-          : targetModel.addAttribute(modelOrAttribute);
+        if (otherIsModel) {
+          return targetModel.addRelationship(
+            tableName,
+            targetModel,
+            this.models.get(pluralize.singular(modelOrAttribute))
+          );
+        } else {
+          return targetModel.addAttribute(modelOrAttribute);
+        }
       })
     );
   }
