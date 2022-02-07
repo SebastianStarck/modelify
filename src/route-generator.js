@@ -17,16 +17,21 @@ export default class RouteGenerator {
   }
 
   generateGetRoutes(model) {
-    logService.logRouteGen("GET", `/${model.pluralName}`);
-    this.app.get(`/${model.pluralName}`, async (req, res) => {
-      const data = await model.get();
+    logService.logRouteGen("GET", `/${model.tableName}`);
+    this.app.get(`/${model.tableName}`, async (req, res) => {
+      try {
+        const data = await model.get();
 
-      res.setHeader("Content-Type", "application/json");
-      res.end(JSON.stringify(data));
+        res.setHeader("Content-Type", "application/json");
+        res.end(JSON.stringify(data));
+      } catch (err) {
+        logService.error(err);
+        res.status(500).send(err.message);
+      }
     });
 
-    logService.logRouteGen("GET", `/${model.pluralName}/:id`);
-    this.app.get(`/${model.pluralName}/:id`, async (req, res) => {
+    logService.logRouteGen("GET", `/${model.tableName}/:id`);
+    this.app.get(`/${model.tableName}/:id`, async (req, res) => {
       try {
         const data = await model.get(req.params.id);
 
@@ -37,14 +42,15 @@ export default class RouteGenerator {
         res.setHeader("Content-Type", "application/json");
         res.end(JSON.stringify(data));
       } catch (err) {
+        logService.error(err);
         res.status(500).send(err.message);
       }
     });
   }
 
   generatePutRoutes(model) {
-    logService.logRouteGen("PUT", `/${model.pluralName}/:id`);
-    this.app.put(`/${model.pluralName}/:id`, async (req, res) => {
+    logService.logRouteGen("PUT", `/${model.tableName}/:id`);
+    this.app.put(`/${model.tableName}/:id`, async (req, res) => {
       try {
         const target = await model.get(req.params.id);
 
@@ -57,28 +63,30 @@ export default class RouteGenerator {
         res.setHeader("Content-Type", "application/json");
         res.end(JSON.stringify(result));
       } catch (err) {
+        logService.error(err);
         res.status(500).send(err.message);
       }
     });
   }
 
   generatePostRoutes(model) {
-    logService.logRouteGen("POST", `/${model.pluralName}`);
-    this.app.post(`/${model.pluralName}`, async (req, res) => {
+    logService.logRouteGen("POST", `/${model.tableName}`);
+    this.app.post(`/${model.tableName}`, async (req, res) => {
       try {
         const result = await model.create(req.body);
 
         res.setHeader("Content-Type", "application/json");
         res.end(JSON.stringify(result));
       } catch (err) {
+        logService.error(err);
         res.status(500).send(err.message);
       }
     });
   }
 
   generateDeleteRoutes(model) {
-    logService.logRouteGen("DELETE", `/${model.pluralName}/:id`);
-    this.app.delete(`/${model.pluralName}/:id`, async (req, res) => {
+    logService.logRouteGen("DELETE", `/${model.tableName}/:id`);
+    this.app.delete(`/${model.tableName}/:id`, async (req, res) => {
       try {
         const target = await model.get(req.params.id);
 

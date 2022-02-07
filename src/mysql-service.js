@@ -68,8 +68,8 @@ async function getTables() {
   }
 }
 
-function columnIsRequired({ Extra, Null }) {
-  return Null === "NO" && Extra !== "auto_increment";
+function columnIsRequired({ Extra, Null, Default }) {
+  return Null === "NO" && Extra !== "auto_increment" && !Default;
 }
 
 function getColumnName({ Field }) {

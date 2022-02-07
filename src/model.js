@@ -9,11 +9,14 @@ import _ from "lodash";
 export default class Model {
   name;
   capitalizedName;
-  pluralName;
+  tableName;
 
   fields = [];
+  plainFields = [];
   updateableFields = [];
   requiredFields = [];
+  hasCreatedAtTimestamp;
+  hasUpdatedAtTimestamp;
 
   relations = new Map();
   attributes = new Map();
@@ -21,9 +24,12 @@ export default class Model {
   constructor(name, fields) {
     this.name = pluralize.singular(name);
     this.capitalizedName = _.capitalize(this.name);
-    this.pluralName = name;
+    this.tableName = name;
     this.fields = fields;
+    this.plainFields = fields.map(({ Field }) => Field);
 
+    this.hasCreatedAtTimestamp = this.plainFields.includes("created_at");
+    this.hasUpdatedAtTimestamp = this.plainFields.includes("updated_at");
     this.updateableFields = _.without(
       fields.map((field) => field.Field),
       "id",
@@ -31,10 +37,8 @@ export default class Model {
     );
 
     this.requiredFields = fields
-      .filter(
-        (field) => field.Null === "NO" && field.Extra !== "auto_increment"
-      )
-      .map((field) => field.Field);
+      .filter(mysqlService.columnIsRequired)
+      .map(mysqlService.getColumnName);
   }
 
   async addRelationship(name, seniorModel, childrenModel) {
@@ -83,7 +87,7 @@ export default class Model {
 
   async getLast() {
     const data = await mysqlService.runQuery(
-      `SELECT * FROM ${this.pluralName}
+      `SELECT * FROM ${this.tableName}
        ORDER BY id DESC
        LIMIT 1`
     );
@@ -94,24 +98,34 @@ export default class Model {
   async update(id, data = {}) {
     delete data.id;
     const fieldsToUpdate = this.getValidFields(data);
+    const relationsToUpdate = this.getRelationsToUpdate(data, id);
 
-    if (Object.keys(fieldsToUpdate).length === 0) {
-      return this.get(id);
+    relationsToUpdate.forEach(({ relationName, relationData }) => {
+      this.relations.get(relationName).validateDataForCreate(relationData);
+    });
+
+    if (Object.keys(fieldsToUpdate).length > 0) {
+      const query = new QueryBuilder(this).update(id, data);
+      // TODO: Add verification on query response
+      await mysqlService.runQuery(query);
     }
 
-    await mysqlService.runQuery(`
-      UPDATE ${this.pluralName}
-      SET ${this.parseFieldsToSQLUpdate(fieldsToUpdate)} 
-      WHERE id = ${id}
-    `);
+    relationsToUpdate.forEach(async ({ relationName, relationData }) => {
+      await this.overrideExistingRelationEntries(
+        id,
+        this.relations.get(relationName),
+        relationData
+      );
+    });
 
     return this.get(id);
   }
 
   async delete(id) {
+    // TODO: Add verification on query response
     await mysqlService.runQuery(`
       DELETE 
-      FROM ${this.pluralName} 
+      FROM ${this.tableName} 
       WHERE id = ${id}
     `);
 
@@ -130,56 +144,50 @@ export default class Model {
       throw new InvalidModelInputError(missingRequiredFields);
     }
 
-    const columns = Object.keys(fieldsToUpdate)
-      .map((column) => `\`${column}\``)
-      .concat("created_at")
-      .join(", ");
-
-    const values = Object.values(fieldsToUpdate)
-      .map((value) => `'${value}'`)
-      .concat("NOW()")
-      .join(", ");
-
-    await mysqlService.runQuery(`
-      INSERT INTO ${this.pluralName} (${columns})
-      VALUES (${values})
-    `);
+    const query = new QueryBuilder(this).create(data);
+    // TODO: Add verification on query response
+    const result = await mysqlService.runQuery(query);
 
     return this.getLast();
   }
 
-  parseFieldsToSQLUpdate(fields) {
-    const data = Object.entries(fields);
+  async overrideExistingRelationEntries(id, relation, newData) {
+    await mysqlService.runQuery(
+      new QueryBuilder(this).deleteExistingRelation(id, relation)
+    );
 
-    return data.reduce((accumulator, [field, value], index) => {
-      let result = accumulator + `\`${field}\` = '${value}'`;
+    return this.assignRelationData(relation, newData);
+  }
 
-      if (index !== data.length - 1) {
-        result += ", \n";
-      }
-
-      return result;
-    }, "");
+  assignRelationData(relation, newData) {
+    new QueryBuilder(this)
+      .createRelationEntries(relation, newData)
+      .forEach(async (query) => await mysqlService.runQuery(query));
   }
 
   rawSQLToModel = (rawOutput) => {
-    const model = Object.entries(rawOutput).reduce((result, [key, value]) => {
-      return _.set(result, key, value);
-    }, {});
+    const model = Object.entries(rawOutput).reduce(
+      (partialModel, [key, value]) => {
+        const [_firstLevelProp, secondLevelProp] = key.split(".");
+        const valueShouldBeOmitted = secondLevelProp && !value;
+
+        return valueShouldBeOmitted
+          ? partialModel
+          : _.set(partialModel, key, value);
+      },
+      {}
+    );
 
     this.relations.forEach((relation) => {
-      model[relation.pluralName] = this.parseRelationCollection(
-        model[relation.pluralName]
+      model[relation.tableName] = this.parseRelationCollection(
+        model[relation.tableName] || []
       );
     });
 
     return model;
   };
 
-  /*
-    From "user_attributes": { "id": "1,2,3" ...},
-    To   "user_attributes": [{ "id": "1"...}, { "id": "2" }...]
-   */
+  // "user_attributes": { "id": "1,2,3" ...}, => "user_attributes": [{ "id": "1"...}, { "id": "2" }...]
   parseRelationCollection(relationship) {
     return Object.entries(relationship).reduce((result, [key, value]) => {
       const parsedValue =
@@ -197,5 +205,22 @@ export default class Model {
 
       return result;
     }, []);
+  }
+
+  getRelationsToUpdate(data, id) {
+    return Object.keys(data)
+      .filter((relationName) =>
+        [...this.relations.keys()].includes(relationName)
+      )
+      .map((relationName) => {
+        const relationsWithSeniorId = data[relationName].map((relation) =>
+          _.set(relation, `id_${this.name}`, id)
+        );
+
+        return {
+          relationName,
+          relationData: relationsWithSeniorId,
+        };
+      });
   }
 }

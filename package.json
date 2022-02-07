@@ -20,6 +20,7 @@
     "mysql2": "^2.3.3",
     "npm": "^8.4.0",
     "pluralize": "^8.0.0",
-    "swagger-ui-express": "^4.3.0"
+    "swagger-ui-express": "^4.3.0",
+    "body-parser": "latest"
   }
 }

@@ -5,8 +5,10 @@ import logService from "./src/log-service.js";
 import mysqlService from "./src/mysql-service.js";
 import generateDocJSON from "./src/doc-generator.js";
 import swaggerUi from "swagger-ui-express";
+import bodyParser from 'body-parser'
 
 async function run(port, dbOptions, app) {
+  app.use(bodyParser.json());
   const databaseExplorer = new DatabaseExplorer();
   const routeGenerator = new RouteGenerator(app);
 
