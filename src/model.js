@@ -139,16 +139,40 @@ export default class Model {
     const missingRequiredFields = this.requiredFields.filter(
       (field) => !Object.keys(fieldsToUpdate).includes(field)
     );
+    const relationsToInsert = this.getRelationsToUpdate(data, null);
+
+    relationsToInsert.forEach(({ relationName, relationData }) => {
+      const relation = this.relations.get(relationName);
+
+      if (!relation) {
+        throw new Error(`Relation ${relationName} not found`);
+      }
+
+      relation.validateDataForCreate(relationData);
+    });
 
     if (missingRequiredFields.length > 0) {
       throw new InvalidModelInputError(missingRequiredFields);
     }
 
-    const query = new QueryBuilder(this).create(data);
+    const query = new QueryBuilder(this).create(fieldsToUpdate);
     // TODO: Add verification on query response
-    const result = await mysqlService.runQuery(query);
+    await mysqlService.runQuery(query);
+    const result = await this.getLast();
 
-    return this.getLast();
+    const signedRelationsData = this.signRelationsDataWithSeniorId(
+      relationsToInsert,
+      result.id
+    );
+
+    signedRelationsData.forEach(async ({ relationName, relationData }) => {
+      await this.assignRelationData(
+        this.relations.get(relationName),
+        relationData
+      );
+    });
+
+    return this.get(result.id);
   }
 
   async overrideExistingRelationEntries(id, relation, newData) {
@@ -207,20 +231,30 @@ export default class Model {
     }, []);
   }
 
-  getRelationsToUpdate(data, id) {
-    return Object.keys(data)
+  getRelationsToUpdate(data, signingId = null) {
+    const relationsToUpdate = Object.keys(data)
       .filter((relationName) =>
         [...this.relations.keys()].includes(relationName)
       )
       .map((relationName) => {
-        const relationsWithSeniorId = data[relationName].map((relation) =>
-          _.set(relation, `id_${this.name}`, id)
-        );
-
         return {
           relationName,
-          relationData: relationsWithSeniorId,
+          relationData: data[relationName],
         };
       });
+
+    return this.signRelationsDataWithSeniorId(relationsToUpdate, signingId);
+  }
+
+  signRelationsDataWithSeniorId(data, id) {
+    return data.map((relation) =>
+      _.set(
+        relation,
+        "relationData",
+        relation.relationData.map((relationEntry) =>
+          _.set(relationEntry, `id_${this.name}`, id)
+        )
+      )
+    );
   }
 }
