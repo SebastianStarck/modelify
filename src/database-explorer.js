@@ -60,7 +60,7 @@ export default class DatabaseExplorer {
             this.models.get(pluralize.singular(modelOrAttribute))
           );
         } else {
-          return targetModel.addAttribute(modelOrAttribute);
+          return targetModel.addAttribute(tableName, targetModel);
         }
       })
     );

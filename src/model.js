@@ -3,6 +3,7 @@ import logService from "./log-service.js";
 import mysqlService from "./mysql-service.js";
 import InvalidModelInputError from "./invalid-model-input-error.js";
 import Relationship from "./relationship.js";
+import Attribute from "./attribute.js";
 import QueryBuilder from "./query-builder.js";
 import _ from "lodash";
 
@@ -41,40 +42,34 @@ export default class Model {
       .map(mysqlService.getColumnName);
   }
 
-  async addRelationship(name, seniorModel, childrenModel) {
-    const tableData = await mysqlService.runQuery(`DESCRIBE ${name}`);
+  async addRelationship(relationName, seniorModel, childrenModel) {
+    const tableData = await mysqlService.runQuery(`DESCRIBE ${relationName}`);
     const relationship = new Relationship(
-      name,
+      relationName,
       tableData,
       seniorModel,
       childrenModel
     );
 
-    this.relations.set(name, relationship);
-    logService.logAttributeOrRelationSet("relationship", name, this.name);
+    this.relations.set(relationName, relationship);
+    logService.logAttributeOrRelationSet(
+      "relationship",
+      relationName,
+      this.name
+    );
   }
 
-  addAttribute(attributeName, values = []) {
-    this.attributes.set(attributeName, values);
+  async addAttribute(attributeName, seniorModel) {
+    const tableData = await mysqlService.runQuery(`DESCRIBE ${attributeName}`);
+    this.attributes.set(
+      attributeName,
+      new Attribute(attributeName, tableData, seniorModel)
+    );
     logService.logAttributeOrRelationSet("attribute", attributeName, this.name);
   }
 
   getValidFields(data) {
     return _.pick(data, this.updateableFields);
-  }
-
-  // TODO: Improve field type casting from sql to swagger-like type
-  getFieldsForDocumentation() {
-    return this.fields.reduce((result, { Field, Type }) => {
-      const isNumber = Type.includes("int");
-      return {
-        ...result,
-        [Field]: {
-          type: isNumber ? "integer" : "string",
-          format: isNumber ? "int32" : null,
-        },
-      };
-    }, {});
   }
 
   async get(id = null) {
@@ -123,6 +118,7 @@ export default class Model {
 
   async delete(id) {
     // TODO: Add verification on query response
+    // TODO: Add deletion of relations are not cascaded for it
     await mysqlService.runQuery(`
       DELETE 
       FROM ${this.tableName} 

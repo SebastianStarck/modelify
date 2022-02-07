@@ -1,8 +1,9 @@
 import { readFileSync } from "fs";
 import logService from "./log-service.js";
 import path from "path";
+import _ from "lodash";
 
-export default function generateDoc(models) {
+export default async function generateDoc(models) {
   const docFilePath = // FIXME: Clean up path reading?
     path.resolve() + "/node_modules/modelify/docs/template.json";
   const docFile = JSON.parse(readFileSync(docFilePath, "utf8") || "{}");
@@ -14,9 +15,22 @@ export default function generateDoc(models) {
   models.forEach((model) => {
     docFile.components.schemas[model.capitalizedName] = {
       type: "object",
-      properties: model.getFieldsForDocumentation(),
-      xml: { name: model.capitalizedName },
+      properties: parseFieldsForDocumentation(model.fields),
     };
+
+    for (const relation of model.relations.values()) {
+      docFile.components.schemas[relation.capitalizedName] = {
+        type: "object",
+        properties: parseFieldsForDocumentation(relation.fields),
+      };
+    }
+
+    for (const attribute of model.attributes.values()) {
+      docFile.components.schemas[attribute.capitalizedName] = {
+        type: "object",
+        properties: parseFieldsForDocumentation(attribute.fields),
+      };
+    }
 
     docFile.paths[`/${model.name}`] = {
       put: generateOperationDocumentation("put", model),
@@ -82,4 +96,42 @@ function getResponsesForOperation(operation, model) {
       content: {},
     };
   }
+}
+
+function parseFieldsForDocumentation(fields) {
+  return fields.reduce((result, { Field, Type }) => {
+    const [firstWord, ...rest] = Field.split("_");
+    const isForeignKey = firstWord === "id" && rest.length;
+    const isNumber = Type.includes("int");
+
+    const fieldMeta = {
+      type: isNumber ? "integer" : "string",
+      format: isNumber ? "int32" : null,
+    };
+
+    if (isForeignKey) {
+      _.set(fieldMeta, "$ref", `#/components/schemas/${_.startCase(rest)}`);
+    }
+
+    return _.set(result, Field, fieldMeta);
+  }, {});
+}
+
+function parseAttributeEntriesForDocumentation(entries) {
+  return entries.reduce((result, { Field, Type }) => {
+    const [firstWord, ...rest] = Field.split("_");
+    const isForeignKey = firstWord === "id" && rest.length;
+    const isNumber = Type.includes("int");
+
+    const fieldMeta = {
+      type: isNumber ? "integer" : "string",
+      format: isNumber ? "int32" : null,
+    };
+
+    if (isForeignKey) {
+      _.set(fieldMeta, "$ref", `#/components/schemas/${_.startCase(rest)}`);
+    }
+
+    return _.set(result, Field, fieldMeta);
+  }, {});
 }

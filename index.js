@@ -5,7 +5,7 @@ import logService from "./src/log-service.js";
 import mysqlService from "./src/mysql-service.js";
 import generateDocJSON from "./src/doc-generator.js";
 import swaggerUi from "swagger-ui-express";
-import bodyParser from 'body-parser'
+import bodyParser from "body-parser";
 
 async function run(port, dbOptions, app) {
   app.use(bodyParser.json());
@@ -35,7 +35,7 @@ async function run(port, dbOptions, app) {
   app.use(
     "/api-docs",
     swaggerUi.serve,
-    swaggerUi.setup(generateDocJSON(databaseExplorer.models))
+    swaggerUi.setup(await generateDocJSON(databaseExplorer.models))
   );
   logService.success(`REST API hosted at http://localhost:${3100}/api-docs/`);
 }

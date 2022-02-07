@@ -18,15 +18,11 @@ export default class Relationship {
   hasUpdatedAtTimestamp;
 
   seniorModel;
-  childrenModel;
   attributes = new Map();
 
-  constructor(name, fields, seniorModel, childrenModel) {
+  constructor(name, fields, seniorModel) {
     if (!seniorModel) {
       common.stopAppWithError(`Missing senior model for relation ${name}`);
-    }
-    if (!childrenModel) {
-      common.stopAppWithError(`Missing children model for relation ${name}`);
     }
 
     this.name = pluralize.singular(name);
@@ -36,7 +32,6 @@ export default class Relationship {
     this.plainFields = fields.map(({ Field }) => Field);
 
     this.seniorModel = seniorModel;
-    this.childrenModel = childrenModel;
 
     this.hasCreatedAtTimestamp = this.plainFields.includes("created_at");
     this.hasUpdatedAtTimestamp = this.plainFields.includes("updated_at");
@@ -92,5 +87,9 @@ export default class Relationship {
     if (Object.keys(collectionErrors).length > 0) {
       throw new InvalidRelationInputError(collectionErrors);
     }
+  }
+
+  getDataForDocumentation() {
+    return mysqlService.runQuery(`SELECT * FROM ${this.tableName}`);
   }
 }
