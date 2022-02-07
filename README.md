@@ -14,5 +14,6 @@ modelify.run(YOUR_PORT_NUMBER, {
     database: 'modelify',
     user: 'root',
     password: '',
+    logQueries: true,
 }, express());
 ```
