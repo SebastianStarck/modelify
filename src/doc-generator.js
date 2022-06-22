@@ -5,7 +5,7 @@ import _ from "lodash";
 
 export default async function generateDoc(models) {
   const docFilePath = // FIXME: Clean up path reading?
-    path.resolve() + "/node_modules/modelify/docs/template.json";
+    path.resolve() + "/node_modules/mysql-modelify/docs/template.json";
   const docFile = JSON.parse(readFileSync(docFilePath, "utf8") || "{}");
 
   if (!docFile.info) {
